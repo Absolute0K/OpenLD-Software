@@ -1,4 +1,4 @@
-## Software that recieves data from OpenLD
+## OpenLD Software: Full project details in [Hackaday](https://hackaday.io/project/13285)
 
 ### OpenLD
  - Saves **24 bit** EEG/EOG/ECG data to BDF file
