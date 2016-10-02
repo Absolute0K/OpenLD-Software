@@ -21,6 +21,8 @@
 #include <iostream>
 #include <QStringList>
 
+#define COM_PORT "COM7"
+
 // Formula for impedance calculation - FUDGE CALCULATION
 #define IMP_CALC(x) (x * 1.5)/0.06
 
@@ -59,7 +61,7 @@ SerialMonitor::SerialMonitor(QObject *parent) :
 
     DAQ = new QSerialPort(this);
     //    DAQ->setPortName("/dev/rfcomm0"); <- For Linux
-    DAQ->setPortName("COM3");
+    DAQ->setPortName(COM_PORT);
     DAQ->setBaudRate(230400);
     DAQ->setDataBits(QSerialPort::Data8);
     DAQ->setParity(QSerialPort::NoParity);
