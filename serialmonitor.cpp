@@ -36,7 +36,6 @@ const int EOG_COUNTER_THRESHOLD = 2;
 
 // TIME CONSTANTS
 const int WINDOW_TRIGGER = 60 * 4;
-const int BTN_TIME_WINDOW = 60 * 7;
 
 // Index calculation
 #define arr_REM(x, y) x + (y) * REM_DATA_WINDOW
@@ -112,10 +111,7 @@ SerialMonitor::SerialMonitor(QObject *parent) :
     time_passed_sec = 0;
     stimulus_delay_on = -1;
     time_failsafe_btn = -1;
-    counter_REM = STIM_DISABLED_NUMBER;
     flag_REM_Ready = 0;
-    failsafe_on = 0;
-    disable_REM = 0;
 
     // Clear out Impedance buffer
     for (int i = 0; i < 8; i++) impedanceBuffer[i] = 0;
@@ -134,9 +130,6 @@ SerialMonitor::SerialMonitor(QObject *parent) :
 
     // Set up mp3 alert
     rem_sound_Alert = new QSound("rem_alert.wav");
-    rem_sound_Alert->setLoops(10);
-    reminder_sound_Alert = new QSound("reminder_alert.wav");
-//    heartbeat_Alert = new QSound("heartbeat_alert.wav");
 
     // Commence the serial connection
     connect(DAQ, SIGNAL(readyRead()), this, SLOT(writeToSettings()));
@@ -184,23 +177,12 @@ void SerialMonitor::writeToText()
             IncomingData.remove(0, 1);
 
             if (IncomingData.toInt()) {
-                m_guiConsole->update_Toolbar(QString("Manual Override! Probably awake? Yeah: Delayed by %1 minutes").arg(BTN_TIME_WINDOW / 60));
+                m_guiConsole->update_Toolbar("Manual Override! Probably awake?");
                 awakefile << (long) time_passed_sec << ", " << 2 << std::endl;
 
-                // Failsafe is enabled only once after the alarm is engaged
-                if (failsafe_on) {
-                    time_failsafe_btn = time_passed_sec + STIM_DELAY_FAILSAFE;
-                    failsafe_on = 0;
-                } else time_failsafe_btn = -1;
-
                 rem_sound_Alert->stop();
-                reminder_sound_Alert->play();
-//                heartbeat_Alert->play();
 
-                // If Triggered in the WINDOW_TRIGGER duration, stop alarm for BTN_TIME_WINDOW minutes
-                if (time_passed_sec <= disabled_Time_Window) disabled_Time_Window = time_passed_sec + BTN_TIME_WINDOW;
-
-//                DAQ->write(QByteArray("O", 1));
+                // DAQ->write(QByteArray("O", 1));
 
                 // Annotate
                 edfwrite_annotation_latin1(BDFHandler, (long long)(time_passed_sec * 10000LL), (long long)( 1 * 10000LL), "TRIGGER");
@@ -380,9 +362,9 @@ void SerialMonitor::do_REM_Analysis()
                                         .arg(QString::number(rem_analysis->avg_SEFd, 'f', 1))
                                         .arg(QString::number(rem_analysis->avg_AP, 'f', 1))
                                         .arg(QString::number(rem_analysis->avg_RP, 'f', 1))
-                                        .arg(rem_analysis->rem_eog_Counter);
+                                        .arg(rem_analysis->rem_eog_Counter));
 
-            // IF REM IS DETECTED INCREMENT counter_REM, if not, RESET  __OR__ alarm demo mode
+            // IF REM IS DETECTED OR ALARM
             if (stage_REM || alarm_demo) {
 
                 // If sufficient amount of time has passed, break time is over, EOG counter exceeds threshold, OR if demo is set every 5 minutes
@@ -412,11 +394,6 @@ void SerialMonitor::do_REM_Analysis()
                     // The alarm is on, hence begin WINDOW_TRIGGER for the trigger
                     disabled_Time_Window = time_passed_sec + WINDOW_TRIGGER;
 
-                    // failsafe is turned on - NOTE THIS IS A DILD FAILSAFE
-                    failsafe_on = 1;
-
-                    // Enable the awake-disable function
-                    disable_REM = 1;
 
                 } else { // NO ALARM
                     analysisfile << 0;

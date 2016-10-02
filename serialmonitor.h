@@ -68,9 +68,7 @@ private:
 
     int channel_analysis;
     int stage_REM;
-    int counter_REM;
     int flag_REM_Ready;
-    int disable_REM;
 
     int alarm_demo;
     int impedance_on;
@@ -85,10 +83,8 @@ private:
     double *signal_nf_buffer;
     double *fft_spectrum;
 
-    // REM play sound file and reminder sound file
+    // REM play sound file
     QSound *rem_sound_Alert;
-    QSound *reminder_sound_Alert;
-    QSound *heartbeat_Alert;
 
     // File to save things in
     std::ofstream analysisfile;
