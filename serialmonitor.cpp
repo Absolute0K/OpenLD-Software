@@ -78,10 +78,6 @@ SerialMonitor::SerialMonitor(QObject *parent) :
     QString analysis_filename = QDateTime::currentDateTime().toString("'analysis_'yyyy-MM-dd'_T'hh-mm'.txt'");
     analysisfile.open(analysis_filename.toLatin1().data());
 
-    // Open awake log file
-    analysis_filename = QDateTime::currentDateTime().toString("'awake_'yyyy-MM-dd'_T'hh-mm'.txt'");
-    awakefile.open(analysis_filename.toLatin1().data());
-
     // Initialize BDF file
     this->init_BDF_file();
 
@@ -173,21 +169,6 @@ void SerialMonitor::writeToText()
 
             m_guiConsole->update_Impedance(impedanceBuffer, 8);
 
-        } else if (First_Char == CHAR_BTN) {
-            IncomingData.remove(0, 1);
-
-            if (IncomingData.toInt()) {
-                m_guiConsole->update_Toolbar("Manual Override! Probably awake?");
-                awakefile << (long) time_passed_sec << ", " << 2 << std::endl;
-
-                rem_sound_Alert->stop();
-
-                // DAQ->write(QByteArray("O", 1));
-
-                // Annotate
-                edfwrite_annotation_latin1(BDFHandler, (long long)(time_passed_sec * 10000LL), (long long)( 1 * 10000LL), "TRIGGER");
-            }
-
         } else if (First_Char == CHAR_EOW) {
             if (DataCounter != 0) analysisfile << "ERROR: Data Counter = " << DataCounter << " != 0" << std::endl;
 
@@ -227,7 +208,6 @@ SerialMonitor::~SerialMonitor()
     m_guiConsole->~guiConsole();
     rem_analysis->~remDetect();
     analysisfile.close();
-    awakefile.close();
 }
 
 void SerialMonitor::init_BDF_file()

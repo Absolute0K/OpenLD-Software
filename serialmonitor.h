@@ -88,7 +88,6 @@ private:
 
     // File to save things in
     std::ofstream analysisfile;
-    std::ofstream awakefile;
 
     // Time variables
     long time_passed_sec;
