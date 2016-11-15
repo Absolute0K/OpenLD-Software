@@ -1,0 +1,3 @@
+[submodule "OpenBCI_C"]
+	path = OpenBCI_C
+	url = https://github.com/OpenBCI/OpenBCI_C.git
