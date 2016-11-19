@@ -1,5 +1,9 @@
 ## OpenLD Software: Full project details in [Hackaday](https://hackaday.io/project/13285)
 
+### NOTE FOR DIFFERENT HARDWARE PLATFORMS:
+ - OpenLD Hardware - please use branch: **OpenLD_Support**
+ - OpenBCI Hardware - please use branch: **OpenBCI_Support** (WORK IN PROGRESS)
+
 ### OpenLD
  - Saves **24 bit** EEG/EOG/ECG data to BDF file
  - Can configure # of channels + individual *channel labels*
