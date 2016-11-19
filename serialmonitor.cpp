@@ -25,10 +25,9 @@
 #include "serialmonitor.h"
 #include "edflib.h"
 #include <QtSerialPort/QSerialPort>
+#include <QCoreApplication>
 #include <iostream>
 #include <QStringList>
-
-#define COM_PORT "COM7"
 
 // Formula for impedance calculation - FUDGE CALCULATION
 #define IMP_CALC(x) (x * 1.5)/0.06
@@ -66,9 +65,15 @@ SerialMonitor::SerialMonitor(QObject *parent) :
     QObject(parent)
 {
 
+    // Set up Serial COMs
+    char spp_name[20];
+    std::cout << "============================\n";
+    std::cout << "What is the device path for the OpenLD Serial Port?\n" <<
+                 "ex) Windows: COM4, Linux: /dev/OPENLD-SPP\n>> ";
+    std::cin >> spp_name;
+
     DAQ = new QSerialPort(this);
-    //    DAQ->setPortName("/dev/rfcomm0"); <- For Linux
-    DAQ->setPortName(COM_PORT);
+    DAQ->setPortName(spp_name);
     DAQ->setBaudRate(230400);
     DAQ->setDataBits(QSerialPort::Data8);
     DAQ->setParity(QSerialPort::NoParity);
@@ -77,9 +82,12 @@ SerialMonitor::SerialMonitor(QObject *parent) :
 
     // Keep looping until a connection is established
     std::cout << "Wut trying to connect to: " << DAQ->portName().toLatin1().data()
-              << " at " << DAQ->baudRate() << "bps...\n";
+              << " at " << DAQ->baudRate() << "bps... Make sure the RN42 LED is blinking slowly and not fast!\n";
 
-    while (!DAQ->open(QIODevice::ReadWrite)) std::cout << "FAILED!\n";
+    if (!DAQ->open(QIODevice::ReadWrite)) {
+        std::cerr << "Failed to establish connection! Try turning Bluetooth on/off again?\n";
+        exit(0);
+    }
     std::cout << "Success!\n";
     std::cout << "============================\n";
 
@@ -103,6 +111,7 @@ SerialMonitor::SerialMonitor(QObject *parent) :
     std::cout << "============================\n";
     std::cout << "How long until the alarm activates? (-1 for test mode) - recommended 3 hours\n>> ";
     std::cin >> disabled_Time_Window;
+    std::cout << "If nothing happens after this, power cycle the OpenLD board and try again. This is some random bug.\n";
 
     if (disabled_Time_Window < 0) alarm_demo = 1; // Set DEMO mode if less than zero (-1)
     else alarm_demo = 0;
