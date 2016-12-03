@@ -89,36 +89,15 @@ SerialMonitor::SerialMonitor(QObject *parent) :
         exit(0);
     }
     std::cout << "Success!\n";
-    std::cout << "============================\n";
-
-    // Open analysis log file
-    QString analysis_filename = QDateTime::currentDateTime().toString("'analysis_'yyyy-MM-dd'_T'hh-mm'.txt'");
-    analysisfile.open(analysis_filename.toLatin1().data());
-
-    // Initialize BDF file
-    this->init_BDF_file();
 
     // Set analysis channel index
     channel_analysis = 1;
     std::cout << "============================\n";
     std::cout << "Which channel is used for REM analysis? (EEG, EOG1, EOG2)\n"
-                 "Starting from Channel # - recommended 1\n>> ";
+                 "Type in -1 to only record data\n"
+                 "Starting from Channel # >> ";
     std::cin >> channel_analysis;
-    channel_analysis--;
-
-    // Set timer limit threshold
-    disabled_Time_Window = 3 * 60 * 60;
     std::cout << "============================\n";
-    std::cout << "How long until the alarm activates? (-1 for test mode) - recommended 3 hours\n>> ";
-    std::cin >> disabled_Time_Window;
-    std::cout << "If nothing happens after this, power cycle the OpenLD board and try again. This is some random bug.\n";
-
-    if (disabled_Time_Window < 0) alarm_demo = 1; // Set DEMO mode if less than zero (-1)
-    else alarm_demo = 0;
-
-    disabled_Time_Window *= 3600;
-
-    std::getchar();
 
     // Zero out timers and counters
     DataCounter = 0;
@@ -130,20 +109,49 @@ SerialMonitor::SerialMonitor(QObject *parent) :
     // Clear out Impedance buffer
     for (int i = 0; i < 8; i++) impedanceBuffer[i] = 0;
 
-    // Initialize filter and REM detection objects
-    filter_hp = new filterIIR(coeffs_hp, 1);
-    filter_hp_EOG = new filterIIR(coeffs_hp_EOG, 18);
-    filter_lp = new filterIIR(coeffs_lp, 6);
-    rem_analysis = new remDetect(SMP_FREQ, FFT_WINDOW, REM_DATA_WINDOW, EPOCH_SEC);
-    signal_nf_buffer = new double[REM_DATA_WINDOW * 8];
-    fft_spectrum = new double[FFT_WINDOW/2];
 
-    // Set parameters
-    rem_analysis->set_limits(4, 17, -15, -13);
-    //    rem_analysis->set_limits(4, 19, -15, -13); // More sensitive
+    // Initialize BDF file
+    this->init_BDF_file();
 
-    // Set up mp3 alert
-    rem_sound_Alert = new QSound("rem_alert.wav");
+    if (channel_analysis > 0) {
+        channel_analysis--;
+
+        // Open analysis log file
+        QString analysis_filename = QDateTime::currentDateTime().toString("'analysis_'yyyy-MM-dd'_T'hh-mm'.txt'");
+        analysisfile.open(analysis_filename.toLatin1().data());
+
+        // Set timer limit threshold
+        disabled_Time_Window = 3 * 60 * 60;
+        std::cout << "============================\n";
+        std::cout << "How long until the alarm activates? (-1 for test mode) - recommended 3 hours\n>> ";
+        std::cin >> disabled_Time_Window;
+
+        if (disabled_Time_Window < 0) alarm_demo = 1; // Set DEMO mode if less than zero (-1)
+        else alarm_demo = 0;
+
+        disabled_Time_Window *= 3600;
+
+        std::getchar();
+
+        // Initialize filter and REM detection objects
+        filter_hp = new filterIIR(coeffs_hp, 1);
+        filter_hp_EOG = new filterIIR(coeffs_hp_EOG, 18);
+        filter_lp = new filterIIR(coeffs_lp, 6);
+        rem_analysis = new remDetect(SMP_FREQ, FFT_WINDOW, REM_DATA_WINDOW, EPOCH_SEC);
+        signal_nf_buffer = new double[REM_DATA_WINDOW * 8];
+        fft_spectrum = new double[FFT_WINDOW/2];
+
+        // Set parameters
+        rem_analysis->set_limits(4, 17, -15, -13);
+        // rem_analysis->set_limits(4, 19, -15, -13); // More sensitive
+
+        // Set up mp3 alert
+        rem_sound_Alert = new QSound("rem_alert.wav");
+}
+
+    std::cout << "============================\n";
+    std::cout << "If nothing happens after this, power cycle the OpenLD board and try again. This is some random bug.\n";
+    std::cout << "============================\n";
 
     // Commence the serial connection
     connect(DAQ, SIGNAL(readyRead()), this, SLOT(writeToSettings()));
@@ -167,7 +175,6 @@ void SerialMonitor::writeToText()
             for (int i = 0; i < channels; i++) {
                 ProcessedData[i].remove(" ");
                 dataBuffer[DataCounter + i * SMP_FREQ] = (int) ProcessedData[i].toInt();
-                //std::cout << "Convert: " << ProcessedData[i].toLatin1().data() << " to " << DataBuffer[DataCounter] << std::endl;
             }
 
             DataCounter++;
@@ -178,20 +185,19 @@ void SerialMonitor::writeToText()
             // Split the raw data by whitespaces
             QStringList ProcessedData = IncomingData.split(" ");
 
-            //std::cout << "Impedance values: ";
-
             for (int i = 0; i < channels; i++) {
                 ProcessedData[i].remove(" ");
                 impedanceBuffer[i] = (int) IMP_CALC(ProcessedData[i].toInt());
             }
-
             m_guiConsole->update_Impedance(impedanceBuffer, 8);
 
         } else if (First_Char == CHAR_EOW) {
             if (DataCounter != 0) analysisfile << "ERROR: Data Counter = " << DataCounter << " != 0" << std::endl;
 
-            // Call analysis routine
-            do_REM_Analysis();
+            if (channel_analysis > 0) {
+                // Call analysis routine
+                do_REM_Analysis();
+            }
 
             // Write to BDF
             for (int i = 0; i < channels; i++) edfwrite_digital_samples(BDFHandler, dataBuffer + SMP_FREQ * i);
@@ -224,8 +230,11 @@ SerialMonitor::~SerialMonitor()
     DAQ->close();
     edfclose_file(BDFHandler);
     m_guiConsole->~guiConsole();
-    rem_analysis->~remDetect();
-    analysisfile.close();
+
+    if (channel_analysis > 0) {
+        rem_analysis->~remDetect();
+        analysisfile.close();
+    }
 }
 
 void SerialMonitor::init_BDF_file()
